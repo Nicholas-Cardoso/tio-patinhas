@@ -1,6 +1,6 @@
 package tio.patinhas.service;
 
-import tio.patinhas.models.Criptomoeda;
+import tio.patinhas.models.Cryptocurrency;
 
 import java.util.List;
 
@@ -10,12 +10,12 @@ public class UpdatePriceService {
         System.out.println("Buscando dados da API...");
     }
 
-    public void atualizarCriptomoedas(List<Criptomoeda> criptos) {
+    public void atualizarCriptomoedas(List<Cryptocurrency> criptos) {
         buscarDadosAPI();
 
-        for (Criptomoeda c : criptos) {
+        for (Cryptocurrency c : criptos) {
             Double novoPreco = Math.random() * 100000; // simulação
-            c.atualizarPreco(novoPreco);
+            c.setPreco(novoPreco);
         }
     }
 

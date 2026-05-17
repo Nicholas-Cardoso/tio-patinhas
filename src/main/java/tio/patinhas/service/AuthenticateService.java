@@ -1,7 +1,5 @@
 package tio.patinhas.service;
 
-import tio.patinhas.models.Usuario;
-
 public class AuthenticateService {
     public boolean login(String email, String senha) {
         // lógica de autenticação

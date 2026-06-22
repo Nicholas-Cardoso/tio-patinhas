@@ -3,18 +3,27 @@ package tio.patinhas;
 import tio.patinhas.models.FinancialAsset;
 import tio.patinhas.models.Cryptocurrency;
 import tio.patinhas.models.InvestmentSimulatorService;
-import tio.patinhas.models.MarketDashboard;
 import tio.patinhas.models.Portfolio;
 import tio.patinhas.models.PortfolioPosition;
 import tio.patinhas.models.User;
+import tio.patinhas.models.MarketDashboard;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Main {
-    static void main(String[] args) {
+    public static void main(String[] args) {
         try {
             System.out.println("=== Projeto Tio Patinhas - Teste das classes ===\n");
 
+            // 1. Instanciando objetos base
             User usuario = new User(1L, "Donald Duck", "donald@fiap.com.br", "hash_senha_123");
             System.out.println("Usuário: " + usuario.getNome() + " (id=" + usuario.getId() + ")");
 
@@ -55,10 +64,48 @@ public class Main {
             dashboard.exibirResumo(bitcoin);
             dashboard.exibirResumo(List.of(bitcoin, ethereum));
 
-            System.out.println("\n=== Teste concluído com sucesso ===");
+            ArrayList<Cryptocurrency> listaCriptomoedas = new ArrayList<>();
+            listaCriptomoedas.add(bitcoin);
+            listaCriptomoedas.add(ethereum);
 
+            ArrayList<User> listaUsuarios = new ArrayList<>();
+            listaUsuarios.add(usuario);
+            listaUsuarios.add(new User(2L, "Scrooge McDuck", "patinhas@fiap.com.br", "hash_rico_777"));
+
+            System.out.println("ArrayList de Criptomoedas criado com " + listaCriptomoedas.size() + " itens.");
+            System.out.println("ArrayList de Usuários criado com " + listaUsuarios.size() + " itens.");
+
+            HashMap<String, Cryptocurrency> mapaCriptomoedas = new HashMap<>();
+            mapaCriptomoedas.put(bitcoin.getSimbolo(), bitcoin);
+            mapaCriptomoedas.put(ethereum.getSimbolo(), ethereum);
+
+            HashMap<Long, User> mapaUsuarios = new HashMap<>();
+            for (User u : listaUsuarios) {
+                mapaUsuarios.put(u.getId(), u);
+            }
+
+            System.out.println("HashMap de Criptomoedas criado. Chaves contidas: " + mapaCriptomoedas.keySet());
+            System.out.println("HashMap de Usuários criado. Chaves contidas: " + mapaUsuarios.keySet());
+
+            String arquivoCriptoPath = "criptomoedas_report.txt";
+            String arquivoUsuariosPath = "usuarios_report.txt";
+
+            salvarCriptomoedasNoArquivo(arquivoCriptoPath, listaCriptomoedas);
+            salvarUsuariosNoArquivo(arquivoUsuariosPath, mapaUsuarios);
+
+            System.out.println("Atualizando dados de mercado do Bitcoin no ArrayList...");
+            bitcoin.setPreco(265_000.0);
+            bitcoin.setVolumeNegociacao(1_850_000.0);
+
+            System.out.println("Sobreescrevendo arquivo com os dados atualizados...");
+            salvarCriptomoedasNoArquivo(arquivoCriptoPath, listaCriptomoedas);
+
+            lerArquivoTexto(arquivoCriptoPath);
+            lerArquivoTexto(arquivoUsuariosPath);
         } catch (IllegalArgumentException | IllegalStateException e) {
             System.err.println("Erro ao popular objetos: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Erro na manipulação de arquivos: " + e.getMessage());
         } catch (Exception e) {
             System.err.println("Erro inesperado: " + e.getMessage());
             e.printStackTrace();
@@ -69,6 +116,38 @@ public class Main {
             carteiraInvalida.debitar(100.0);
         } catch (IllegalStateException e) {
             System.out.println("\nTry-catch (cenário de erro esperado): " + e.getMessage());
+        }
+    }
+
+    private static void salvarCriptomoedasNoArquivo(String caminho, ArrayList<Cryptocurrency> lista) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(caminho))) {
+            writer.write("--- RELATÓRIO DE CRIPTOMOEDAS ATIVAS ---\n");
+            for (Cryptocurrency crypto : lista) {
+                writer.write(String.format("ID: %d | Nome: %s | Ticker: %s | Preço: R$ %.2f | Volume: R$ %.2f\n",
+                        crypto.getId(), crypto.getNome(), crypto.getSimbolo(), crypto.getPrecoAtual(), crypto.getVolumeNegociacao()));
+            }
+            System.out.println("Arquivo '" + caminho + "' gravado com sucesso.");
+        }
+    }
+
+    private static void salvarUsuariosNoArquivo(String caminho, HashMap<Long, User> mapa) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(caminho))) {
+            writer.write("--- CADASTRO INTERNO DE USUÁRIOS ---\n");
+            for (Map.Entry<Long, User> entry : mapa.entrySet()) {
+                User u = entry.getValue();
+                writer.write(String.format("Chave(ID): %d -> Nome: %s | Email: %s | HashSenha: %s\n",
+                        entry.getKey(), u.getNome(), u.getEmail(), u.getSenhaHash()));
+            }
+            System.out.println("Arquivo '" + caminho + "' gravado com sucesso.");
+        }
+    }
+
+    private static void lerArquivoTexto(String caminho) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new FileReader(caminho))) {
+            String linha;
+            while ((linha = reader.readLine()) != null) {
+                System.out.println("  " + linha);
+            }
         }
     }
 }

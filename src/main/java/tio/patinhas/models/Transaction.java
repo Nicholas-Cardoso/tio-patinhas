@@ -4,7 +4,7 @@ import tio.patinhas.models.enums.TransactionType;
 
 import java.time.LocalDateTime;
 
-public class Transacao extends Entity {
+public class Transaction extends Entity {
     private Long portfolioId;
     private Long cryptoId;
 
@@ -15,8 +15,8 @@ public class Transacao extends Entity {
 
     private Cryptocurrency cryptocurrency;
 
-    public Transacao(Long id, Long portfolioId, Long cryptoId, Cryptocurrency cryptocurrency,
-                     TransactionType tipo, double quantidade, double precoUnitario) {
+    public Transaction(Long id, Long portfolioId, Long cryptoId, Cryptocurrency cryptocurrency,
+                       TransactionType tipo, double quantidade, double precoUnitario) {
         super(id);
         setPortfolioId(portfolioId);
         setCryptoId(cryptoId);

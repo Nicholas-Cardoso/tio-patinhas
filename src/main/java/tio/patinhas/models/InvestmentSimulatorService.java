@@ -11,7 +11,7 @@ public class InvestmentSimulatorService {
 
         portfolio.debitar(custoTotal);
 
-        Transacao transacao = new Transacao(
+        Transaction transaction = new Transaction(
                 System.currentTimeMillis(),
                 portfolio.getId(),
                 crypto.getId(),
@@ -21,7 +21,7 @@ public class InvestmentSimulatorService {
                 precoAtual
         );
 
-        portfolio.setTransacao(transacao);
+        portfolio.setTransacao(transaction);
         atualizarPosicao(portfolio, crypto, quantidade, true);
 
         System.out.println("Compra realizada: " +
@@ -38,7 +38,7 @@ public class InvestmentSimulatorService {
 
         portfolio.creditar(valorVenda);
 
-        Transacao transacao = new Transacao(
+        Transaction transaction = new Transaction(
                 System.currentTimeMillis(),
                 portfolio.getId(),
                 crypto.getId(),
@@ -48,7 +48,7 @@ public class InvestmentSimulatorService {
                 precoAtual
         );
 
-        portfolio.setTransacao(transacao);
+        portfolio.setTransacao(transaction);
         atualizarPosicao(portfolio, crypto, quantidade, false);
 
         System.out.println(

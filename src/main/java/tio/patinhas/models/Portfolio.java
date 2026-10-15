@@ -7,7 +7,7 @@ public class Portfolio extends Entity {
     private Long userId;
 
     private Double saldoVirtual = 0.0;
-    private List<Transacao> transacoes = new ArrayList<>();
+    private List<Transaction> transacoes = new ArrayList<>();
     private List<PortfolioPosition> posicoes = new ArrayList<>();
 
     public Portfolio(Long id, Long userId) {
@@ -46,7 +46,7 @@ public class Portfolio extends Entity {
         saldoVirtual -= valor;
     }
 
-    public List<Transacao> listarTransacoes() {
+    public List<Transaction> listarTransacoes() {
         return List.copyOf(transacoes);
     }
 
@@ -72,11 +72,11 @@ public class Portfolio extends Entity {
     }
 
     public Double getValorTotalInvestido() {
-        return transacoes.stream().mapToDouble(Transacao::getValorTotal).sum();
+        return transacoes.stream().mapToDouble(Transaction::getValorTotal).sum();
     }
 
     public Double getValorAtual() {
-        return transacoes.stream().mapToDouble(Transacao::getValorAtual).sum();
+        return transacoes.stream().mapToDouble(Transaction::getValorAtual).sum();
     }
 
     public Double getLucroPrejuizo() {
@@ -91,11 +91,11 @@ public class Portfolio extends Entity {
         this.saldoVirtual = saldoVirtual;
     }
 
-    public List<Transacao> getTransacoes() {
+    public List<Transaction> getTransacoes() {
         return List.copyOf(transacoes);
     }
 
-    public void setTransacao(Transacao t) {
+    public void setTransacao(Transaction t) {
         if (t == null) {
             throw new IllegalArgumentException("Transação inválida");
         }

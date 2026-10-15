@@ -1,0 +1,3 @@
+--- CADASTRO INTERNO DE USUÁRIOS ---
+Chave(ID): 1 -> Nome: Donald Duck | Email: donald@fiap.com.br | HashSenha: hash_senha_123
+Chave(ID): 2 -> Nome: Scrooge McDuck | Email: patinhas@fiap.com.br | HashSenha: hash_rico_777

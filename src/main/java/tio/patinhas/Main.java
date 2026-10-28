@@ -1,408 +1,721 @@
 package tio.patinhas;
 
 import tio.patinhas.dao.CryptocurrencyDAO;
-import tio.patinhas.dao.UserDAO;
 import tio.patinhas.dao.PortfolioDAO;
 import tio.patinhas.dao.PriceHistoryDAO;
 import tio.patinhas.dao.TransactionDAO;
+import tio.patinhas.dao.UserDAO;
 import tio.patinhas.db.ConnectionFactory;
-import tio.patinhas.models.FinancialAsset;
 import tio.patinhas.models.Cryptocurrency;
-import tio.patinhas.models.InvestmentSimulatorService;
 import tio.patinhas.models.Portfolio;
-import tio.patinhas.models.PortfolioPosition;
 import tio.patinhas.models.PriceHistory;
 import tio.patinhas.models.Transaction;
-import tio.patinhas.models.enums.TransactionType;
 import tio.patinhas.models.User;
-import tio.patinhas.models.MarketDashboard;
+import tio.patinhas.models.enums.TransactionType;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
+/**
+ * Programa principal do Projeto Tio Patinhas.
+ * Menu principal -> submenu de cada módulo (Inclusão, Alteração, Exclusão,
+ * Exibir todos, Exibir um). Os dados são lidos/gravados no banco Oracle via DAOs;
+ * as listagens são carregadas em ArrayList antes de serem exibidas.
+ */
 public class Main {
+
+    private static final Scanner SC = new Scanner(System.in);
+    private static final Pattern EMAIL = Pattern.compile("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$");
+
+    private static final CryptocurrencyDAO cryptoDao = new CryptocurrencyDAO();
+    private static final UserDAO userDao = new UserDAO();
+    private static final PortfolioDAO portfolioDao = new PortfolioDAO();
+    private static final PriceHistoryDAO historyDao = new PriceHistoryDAO();
+    private static final TransactionDAO transactionDao = new TransactionDAO();
+
     public static void main(String[] args) {
-        try {
-            System.out.println("=== Projeto Tio Patinhas - Teste das classes ===\n");
-
-            // 1. Instanciando objetos base
-            User usuario = new User(1L, "Donald Duck", "donald@fiap.com.br", "hash_senha_123");
-            System.out.println("Usuário: " + usuario.getNome() + " (id=" + usuario.getId() + ")");
-
-            Portfolio carteira = usuario.getPortfolio();
-            System.out.println("Carteira id=" + carteira.getId() + " | userId(FK)=" + carteira.getUserId());
-
-            Cryptocurrency bitcoin = new Cryptocurrency(10L, "Bitcoin", "BTC");
-            bitcoin.setPreco(250_000.0);
-            bitcoin.setVolumeNegociacao(1_500_000.0);
-
-            Cryptocurrency ethereum = new Cryptocurrency(20L, "Ethereum", "ETH");
-            ethereum.setPreco(15_000.0);
-            ethereum.setVolumeNegociacao(800_000.0);
-
-            FinancialAsset ativo = bitcoin;
-            System.out.println("\nPolimorfismo dinâmico (override):");
-            System.out.println(ativo.descricaoResumida());
-            System.out.println("Valor de 2.5 unidades: R$ " + ativo.calcularValor(2.5));
-
-            carteira.creditar(1_000_000.0);
-
-            InvestmentSimulatorService simulador = new InvestmentSimulatorService();
-            simulador.comprar(carteira, bitcoin, 1.0);
-            simulador.comprar(carteira, ethereum, 5.0);
-
-            PortfolioPosition posicaoBtc = carteira.buscarPosicao(bitcoin.getId());
-            System.out.println("\nEntidade associativa PosicaoCarteira:");
-            System.out.println("  PK id=" + posicaoBtc.getId());
-            System.out.println("  FK portfolioId=" + posicaoBtc.getPortfolioId());
-            System.out.println("  FK cryptoId=" + posicaoBtc.getCryptoId());
-            System.out.println("  quantidade=" + posicaoBtc.getQuantidade());
-
-            System.out.println("\nSaldo virtual: R$ " + carteira.getSaldoVirtual());
-            System.out.println("Transações: " + carteira.getTransacoes().size());
-
-            MarketDashboard dashboard = new MarketDashboard();
-            System.out.println("\nPolimorfismo estático (overload):");
-            dashboard.exibirResumo(bitcoin);
-            dashboard.exibirResumo(List.of(bitcoin, ethereum));
-
-            ArrayList<Cryptocurrency> listaCriptomoedas = new ArrayList<>();
-            listaCriptomoedas.add(bitcoin);
-            listaCriptomoedas.add(ethereum);
-
-            ArrayList<User> listaUsuarios = new ArrayList<>();
-            listaUsuarios.add(usuario);
-            listaUsuarios.add(new User(2L, "Scrooge McDuck", "patinhas@fiap.com.br", "hash_rico_777"));
-
-            System.out.println("ArrayList de Criptomoedas criado com " + listaCriptomoedas.size() + " itens.");
-            System.out.println("ArrayList de Usuários criado com " + listaUsuarios.size() + " itens.");
-
-            HashMap<String, Cryptocurrency> mapaCriptomoedas = new HashMap<>();
-            mapaCriptomoedas.put(bitcoin.getSimbolo(), bitcoin);
-            mapaCriptomoedas.put(ethereum.getSimbolo(), ethereum);
-
-            HashMap<Long, User> mapaUsuarios = new HashMap<>();
-            for (User u : listaUsuarios) {
-                mapaUsuarios.put(u.getId(), u);
-            }
-
-            System.out.println("HashMap de Criptomoedas criado. Chaves contidas: " + mapaCriptomoedas.keySet());
-            System.out.println("HashMap de Usuários criado. Chaves contidas: " + mapaUsuarios.keySet());
-
-            String arquivoCriptoPath = "criptomoedas_report.txt";
-            String arquivoUsuariosPath = "usuarios_report.txt";
-
-            salvarCriptomoedasNoArquivo(arquivoCriptoPath, listaCriptomoedas);
-            salvarUsuariosNoArquivo(arquivoUsuariosPath, mapaUsuarios);
-
-            System.out.println("Atualizando dados de mercado do Bitcoin no ArrayList...");
-            bitcoin.setPreco(265_000.0);
-            bitcoin.setVolumeNegociacao(1_850_000.0);
-
-            System.out.println("Sobreescrevendo arquivo com os dados atualizados...");
-            salvarCriptomoedasNoArquivo(arquivoCriptoPath, listaCriptomoedas);
-
-            lerArquivoTexto(arquivoCriptoPath);
-            lerArquivoTexto(arquivoUsuariosPath);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            System.err.println("Erro ao popular objetos: " + e.getMessage());
-        } catch (IOException e) {
-            System.err.println("Erro na manipulação de arquivos: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Erro inesperado: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        try {
-            Portfolio carteiraInvalida = new Portfolio(99L, 99L);
-            carteiraInvalida.debitar(100.0);
-        } catch (IllegalStateException e) {
-            System.out.println("\nTry-catch (cenário de erro esperado): " + e.getMessage());
-        }
-
-        // Testes de integração com o banco de dados Oracle (FIAP)
-        // Uma rodada de teste (INSERT, SELECT, UPDATE, DELETE) para cada tabela
-        testarIntegracaoBancoDeDados();
-        testarIntegracaoUsuario();
-        testarIntegracaoCarteira();
-        testarIntegracaoHistoricoPreco();
-        testarIntegracaoTransacao();
-    }
-
-    // Roteiro de testes da integração da classe Cryptocurrency com o banco Oracle da FIAP.
-    // Cobrindo INSERT, SELECT, UPDATE e DELETE.
-    private static void testarIntegracaoBancoDeDados() {
-        System.out.println("\n=== Teste de integração com o Banco Oracle (T_CRIPTOMOEDA) ===");
+        System.out.println("=== Projeto Tio Patinhas ===");
 
         if (!ConnectionFactory.testarConexao()) {
             System.out.println("Não foi possível conectar ao banco. " +
-                    "Ajuste usuário/senha/URL em ConnectionFactory antes de rodar os testes.");
-
+                    "Ajuste usuário/senha/URL em ConnectionFactory e tente novamente.");
             return;
         }
+        System.out.println("Conexão com o banco estabelecida.");
 
-        CryptocurrencyDAO dao = new CryptocurrencyDAO();
+        int op;
+        do {
+            System.out.println("\n===== MENU PRINCIPAL =====");
+            System.out.println("1 - Criptomoedas");
+            System.out.println("2 - Usuários");
+            System.out.println("3 - Carteiras");
+            System.out.println("4 - Histórico de Preços");
+            System.out.println("5 - Transações");
+            System.out.println("0 - Sair");
+            op = lerOpcao(0, 5);
 
-        try {
-            // 1. INSERT
-            Cryptocurrency solana = new Cryptocurrency(4L, "Solana", "SOL");
-            solana.setPreco(600.0);
-            solana.setVariacaoPercentual(4.2);
-            solana.setVolumeNegociacao(9_500_000.0);
-
-            dao.inserir(solana, "solana");
-            Long idGerado = solana.getId();
-
-            // 2. SELECT (todas + por id)
-            System.out.println("\n-- Listagem após inserção --");
-            dao.exibirTodas();
-
-            System.out.println("\n-- Busca pelo ID gerado (" + idGerado + ") --");
-            Cryptocurrency encontrada = dao.buscarPorId(idGerado);
-
-            if (encontrada != null) {
-                System.out.println("Encontrada: " + encontrada.descricaoResumida()
-                        + " | Preço: " + encontrada.getPrecoAtual());
+            switch (op) {
+                case 1 -> menuCripto();
+                case 2 -> menuUsuario();
+                case 3 -> menuCarteira();
+                case 4 -> menuHistorico();
+                case 5 -> menuTransacao();
+                default -> { }
             }
+        } while (op != 0);
 
-            // 3. UPDATE
-            System.out.println("\n-- Atualizando preço e volume da Solana --");
-            solana.setPreco(650.0);
-            solana.setVolumeNegociacao(10_200_000.0);
-            dao.atualizar(idGerado, solana);
-
-            System.out.println("\n-- Listagem após atualização --");
-            dao.exibirTodas();
-
-            // 4. DELETE
-            System.out.println("\n-- Excluindo a criptomoeda de teste --");
-            dao.excluir(idGerado);
-
-            System.out.println("\n-- Listagem após exclusão --");
-            dao.exibirTodas();
-
-        } catch (RuntimeException e) {
-            System.err.println("Erro durante o teste de integração com o banco: " + e.getMessage());
-        }
+        System.out.println("Encerrando o programa. Até logo!");
     }
 
-    // Roteiro de testes da integração da classe User com o banco Oracle da FIAP.
-    // Cobrindo INSERT, SELECT, UPDATE e DELETE.
-    private static void testarIntegracaoUsuario() {
-        System.out.println("\n=== Teste de integração com o Banco Oracle (T_USUARIO) ===");
+    // ------------------------------------------------------------------
+    // Submenu genérico
+    // ------------------------------------------------------------------
+    private static int submenu(String titulo) {
+        System.out.println("\n--- " + titulo + " ---");
+        System.out.println("1 - Incluir");
+        System.out.println("2 - Alterar");
+        System.out.println("3 - Excluir");
+        System.out.println("4 - Exibir todos");
+        System.out.println("5 - Exibir um registro (por ID)");
+        System.out.println("0 - Voltar");
+        return lerOpcao(0, 5);
+    }
 
-        if (!ConnectionFactory.testarConexao()) {
-            System.out.println("Não foi possível conectar ao banco.");
+    // ------------------------------------------------------------------
+    // CRIPTOMOEDAS
+    // ------------------------------------------------------------------
+    private static void menuCripto() {
+        int op;
+        do {
+            op = submenu("CRIPTOMOEDAS");
+            try {
+                switch (op) {
+                    case 1 -> incluirCripto();
+                    case 2 -> alterarCripto();
+                    case 3 -> excluirCripto();
+                    case 4 -> exibirTodasCripto();
+                    case 5 -> exibirUmaCripto();
+                    default -> { }
+                }
+            } catch (RuntimeException e) {
+                System.out.println("Erro: " + e.getMessage());
+            }
+        } while (op != 0);
+    }
+
+    private static void incluirCripto() {
+        Long id = lerId("ID da criptomoeda");
+        if (cryptoDao.buscarPorId(id) != null) {
+            System.out.println("Já existe uma criptomoeda com o ID " + id + ".");
             return;
         }
+        String idApi = lerTexto("ID na API de mercado (ex.: bitcoin)", null,
+                s -> s.matches("[a-z0-9-]{2,50}"),
+                "Use 2 a 50 caracteres: letras minúsculas, números ou hífen.");
+        String nome = lerTexto("Nome", null, s -> s.length() >= 2 && s.length() <= 50,
+                "O nome deve ter entre 2 e 50 caracteres.");
+        String simbolo = lerTexto("Símbolo (ex.: BTC)", null, s -> s.matches("[A-Za-z0-9]{2,10}"),
+                "O símbolo deve ter 2 a 10 letras/números.").toUpperCase();
+        double preco = lerDouble("Preço atual (R$)", null, v -> v > 0, "O preço deve ser maior que zero.");
+        double variacao = lerDouble("Variação percentual (%)", null, v -> v >= -100,
+                "A variação não pode ser menor que -100%.");
+        double volume = lerDouble("Volume de negociação (R$)", null, v -> v >= 0,
+                "O volume não pode ser negativo.");
 
-        UserDAO dao = new UserDAO();
-
-        try {
-            User usuarioTeste = new User(100L, "Huguinho Teste", "huguinho.teste@fiap.com.br", "hash_teste_001");
-            dao.inserir(usuarioTeste);
-
-            System.out.println("\n-- Listagem após inserção --");
-            dao.exibirTodos();
-
-            System.out.println("\n-- Busca pelo ID 100 --");
-            User encontrado = dao.buscarPorId(100L);
-            if (encontrado != null) {
-                System.out.println("Encontrado: " + encontrado.getNome() + " | " + encontrado.getEmail());
-            }
-
-            System.out.println("\n-- Atualizando nome e email --");
-            usuarioTeste.setNome("Huguinho Atualizado");
-            usuarioTeste.setEmail("huguinho.atualizado@fiap.com.br");
-            dao.atualizar(100L, usuarioTeste);
-
-            System.out.println("\n-- Listagem após atualização --");
-            dao.exibirTodos();
-
-            System.out.println("\n-- Excluindo o usuário de teste --");
-            dao.excluir(100L);
-
-            System.out.println("\n-- Listagem após exclusão --");
-            dao.exibirTodos();
-
-        } catch (RuntimeException e) {
-            System.err.println("Erro durante o teste de integração com o banco: " + e.getMessage());
-        }
+        Cryptocurrency c = new Cryptocurrency(id, nome, simbolo);
+        c.setPreco(preco);
+        c.setVariacaoPercentual(variacao);
+        c.setVolumeNegociacao(volume);
+        cryptoDao.inserir(c, idApi);
     }
 
-    // Roteiro de testes da integração da classe Portfolio com o banco Oracle da FIAP.
-    // Cobrindo INSERT, SELECT, UPDATE e DELETE.
-    private static void testarIntegracaoCarteira() {
-        System.out.println("\n=== Teste de integração com o Banco Oracle (T_CARTEIRA) ===");
-
-        if (!ConnectionFactory.testarConexao()) {
-            System.out.println("Não foi possível conectar ao banco.");
+    private static void alterarCripto() {
+        Long id = lerId("ID da criptomoeda a alterar");
+        Cryptocurrency atual = cryptoDao.buscarPorId(id);
+        if (atual == null) {
+            System.out.println("Criptomoeda não encontrada.");
             return;
         }
+        System.out.println("(Pressione ENTER para manter o valor atual)");
+        String nome = lerTexto("Nome", atual.getNome(), s -> s.length() >= 2 && s.length() <= 50,
+                "O nome deve ter entre 2 e 50 caracteres.");
+        String simbolo = lerTexto("Símbolo", atual.getSimbolo(), s -> s.matches("[A-Za-z0-9]{2,10}"),
+                "O símbolo deve ter 2 a 10 letras/números.").toUpperCase();
+        double preco = lerDouble("Preço atual (R$)", atual.getPrecoAtual(), v -> v > 0,
+                "O preço deve ser maior que zero.");
+        double variacao = lerDouble("Variação percentual (%)", atual.getVariacaoPercentual(), v -> v >= -100,
+                "A variação não pode ser menor que -100%.");
+        double volume = lerDouble("Volume de negociação (R$)", atual.getVolumeNegociacao(), v -> v >= 0,
+                "O volume não pode ser negativo.");
 
-        UserDAO userDao = new UserDAO();
-        PortfolioDAO dao = new PortfolioDAO();
-
-        try {
-            User donoTeste = new User(101L, "Luizinho Teste", "luizinho.teste@fiap.com.br", "hash_teste_002");
-            userDao.inserir(donoTeste);
-
-            Portfolio carteiraTeste = new Portfolio(101L, 101L);
-            carteiraTeste.setSaldoVirtual(5000.0);
-            dao.inserir(carteiraTeste);
-
-            System.out.println("\n-- Listagem após inserção --");
-            dao.exibirTodas();
-
-            System.out.println("\n-- Busca pelo ID 101 --");
-            Portfolio encontrada = dao.buscarPorId(101L);
-            if (encontrada != null) {
-                System.out.println("Encontrada: saldo virtual R$ " + encontrada.getSaldoVirtual());
-            }
-
-            System.out.println("\n-- Atualizando saldo virtual --");
-            carteiraTeste.setSaldoVirtual(7500.0);
-            dao.atualizar(101L, carteiraTeste);
-
-            System.out.println("\n-- Listagem após atualização --");
-            dao.exibirTodas();
-
-            System.out.println("\n-- Excluindo a carteira de teste --");
-            dao.excluir(101L);
-            userDao.excluir(101L);
-
-            System.out.println("\n-- Listagem após exclusão --");
-            dao.exibirTodas();
-
-        } catch (RuntimeException e) {
-            System.err.println("Erro durante o teste de integração com o banco: " + e.getMessage());
-        }
+        Cryptocurrency nova = new Cryptocurrency(id, nome, simbolo);
+        nova.setPreco(preco);
+        nova.setVariacaoPercentual(variacao);
+        nova.setVolumeNegociacao(volume);
+        cryptoDao.atualizar(id, nova);
     }
 
-    // Roteiro de testes da integração da classe PriceHistory com o banco Oracle da FIAP.
-    // Cobrindo INSERT, SELECT, UPDATE e DELETE.
-    private static void testarIntegracaoHistoricoPreco() {
-        System.out.println("\n=== Teste de integração com o Banco Oracle (T_HISTORICO_PRECO) ===");
-
-        if (!ConnectionFactory.testarConexao()) {
-            System.out.println("Não foi possível conectar ao banco.");
+    private static void excluirCripto() {
+        Long id = lerId("ID da criptomoeda a excluir");
+        if (cryptoDao.buscarPorId(id) == null) {
+            System.out.println("Criptomoeda não encontrada.");
             return;
         }
-
-        PriceHistoryDAO dao = new PriceHistoryDAO();
-
-        try {
-            PriceHistory historicoTeste = new PriceHistory(200L, 1L, 350000.0);
-            dao.inserir(historicoTeste);
-
-            System.out.println("\n-- Listagem após inserção --");
-            dao.exibirTodos();
-
-            System.out.println("\n-- Busca pelo ID 200 --");
-            PriceHistory encontrado = dao.buscarPorId(200L);
-            if (encontrado != null) {
-                System.out.println("Encontrado: preço " + encontrado.getPreco());
-            }
-
-            System.out.println("\n-- Atualizando preço registrado --");
-            historicoTeste.setPreco(355000.0);
-            dao.atualizar(200L, historicoTeste);
-
-            System.out.println("\n-- Listagem após atualização --");
-            dao.exibirTodos();
-
-            System.out.println("\n-- Excluindo o histórico de teste --");
-            dao.excluir(200L);
-
-            System.out.println("\n-- Listagem após exclusão --");
-            dao.exibirTodos();
-
-        } catch (RuntimeException e) {
-            System.err.println("Erro durante o teste de integração com o banco: " + e.getMessage());
+        if (confirmar("Confirma a exclusão?")) {
+            cryptoDao.excluir(id);
         }
     }
 
-    // Roteiro de testes da integração da classe Transaction com o banco Oracle da FIAP.
-    // Cobrindo INSERT, SELECT, UPDATE e DELETE.
-    private static void testarIntegracaoTransacao() {
-        System.out.println("\n=== Teste de integração com o Banco Oracle (T_TRANSACAO) ===");
-
-        if (!ConnectionFactory.testarConexao()) {
-            System.out.println("Não foi possível conectar ao banco.");
+    private static void exibirTodasCripto() {
+        ArrayList<Cryptocurrency> lista = new ArrayList<>(cryptoDao.listarTodas());
+        if (lista.isEmpty()) {
+            System.out.println("Nenhuma criptomoeda cadastrada.");
             return;
         }
+        System.out.println("--- Criptomoedas (" + lista.size() + ") ---");
+        for (Cryptocurrency c : lista) {
+            imprimirCripto(c);
+        }
+    }
 
-        TransactionDAO dao = new TransactionDAO();
+    private static void exibirUmaCripto() {
+        Cryptocurrency c = cryptoDao.buscarPorId(lerId("ID da criptomoeda"));
+        if (c == null) {
+            System.out.println("Criptomoeda não encontrada.");
+        } else {
+            imprimirCripto(c);
+        }
+    }
 
+    private static void imprimirCripto(Cryptocurrency c) {
+        System.out.printf("ID: %d | %s (%s) | Preço: R$ %.2f | Variação: %.2f%% | Volume: R$ %.2f%n",
+                c.getId(), c.getNome(), c.getSimbolo(), c.getPrecoAtual(),
+                c.getVariacaoPercentual(), c.getVolumeNegociacao());
+    }
+
+    // ------------------------------------------------------------------
+    // USUÁRIOS
+    // ------------------------------------------------------------------
+    private static void menuUsuario() {
+        int op;
+        do {
+            op = submenu("USUÁRIOS");
+            try {
+                switch (op) {
+                    case 1 -> incluirUsuario();
+                    case 2 -> alterarUsuario();
+                    case 3 -> excluirUsuario();
+                    case 4 -> exibirTodosUsuarios();
+                    case 5 -> exibirUmUsuario();
+                    default -> { }
+                }
+            } catch (RuntimeException e) {
+                System.out.println("Erro: " + e.getMessage());
+            }
+        } while (op != 0);
+    }
+
+    private static void incluirUsuario() {
+        Long id = lerId("ID do usuário");
+        if (userDao.buscarPorId(id) != null) {
+            System.out.println("Já existe um usuário com o ID " + id + ".");
+            return;
+        }
+        String nome = lerTexto("Nome", null, s -> s.length() >= 3 && s.length() <= 100,
+                "O nome deve ter entre 3 e 100 caracteres.");
+        String email = lerTexto("E-mail", null, s -> EMAIL.matcher(s).matches() && s.length() <= 100,
+                "E-mail inválido.");
+        if (emailEmUso(email, null)) {
+            System.out.println("Este e-mail já está cadastrado para outro usuário.");
+            return;
+        }
+        String senha = lerTexto("Senha (mín. 6 caracteres)", null, s -> s.length() >= 6,
+                "A senha deve ter pelo menos 6 caracteres.");
+
+        userDao.inserir(new User(id, nome, email, hashSenha(senha)));
+    }
+
+    private static void alterarUsuario() {
+        Long id = lerId("ID do usuário a alterar");
+        User atual = userDao.buscarPorId(id);
+        if (atual == null) {
+            System.out.println("Usuário não encontrado.");
+            return;
+        }
+        System.out.println("(Pressione ENTER para manter o valor atual)");
+        String nome = lerTexto("Nome", atual.getNome(), s -> s.length() >= 3 && s.length() <= 100,
+                "O nome deve ter entre 3 e 100 caracteres.");
+        String email = lerTexto("E-mail", atual.getEmail(), s -> EMAIL.matcher(s).matches() && s.length() <= 100,
+                "E-mail inválido.");
+        if (emailEmUso(email, id)) {
+            System.out.println("Este e-mail já está cadastrado para outro usuário.");
+            return;
+        }
+        String senha = lerTexto("Nova senha (ENTER para manter)", "", s -> s.length() >= 6,
+                "A senha deve ter pelo menos 6 caracteres.");
+        String hash = senha.isEmpty() ? atual.getSenhaHash() : hashSenha(senha);
+
+        userDao.atualizar(id, new User(id, nome, email, hash));
+    }
+
+    private static void excluirUsuario() {
+        Long id = lerId("ID do usuário a excluir");
+        if (userDao.buscarPorId(id) == null) {
+            System.out.println("Usuário não encontrado.");
+            return;
+        }
+        if (confirmar("Confirma a exclusão?")) {
+            userDao.excluir(id);
+        }
+    }
+
+    private static void exibirTodosUsuarios() {
+        ArrayList<User> lista = new ArrayList<>(userDao.listarTodos());
+        if (lista.isEmpty()) {
+            System.out.println("Nenhum usuário cadastrado.");
+            return;
+        }
+        System.out.println("--- Usuários (" + lista.size() + ") ---");
+        for (User u : lista) {
+            System.out.printf("ID: %d | %s | %s%n", u.getId(), u.getNome(), u.getEmail());
+        }
+    }
+
+    private static void exibirUmUsuario() {
+        User u = userDao.buscarPorId(lerId("ID do usuário"));
+        if (u == null) {
+            System.out.println("Usuário não encontrado.");
+        } else {
+            System.out.printf("ID: %d | %s | %s%n", u.getId(), u.getNome(), u.getEmail());
+        }
+    }
+
+    private static boolean emailEmUso(String email, Long idIgnorar) {
+        for (User u : userDao.listarTodos()) {
+            if (u.getEmail().equalsIgnoreCase(email) && !u.getId().equals(idIgnorar)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Gera o hash SHA-256 da senha (a senha em texto puro nunca vai para o banco). */
+    private static String hashSenha(String senha) {
         try {
-            Cryptocurrency cryptoReferencia = new Cryptocurrency(1L, "Bitcoin", "BTC");
-            Transaction transacaoTeste = new Transaction(
-                    300L, 1L, 1L, cryptoReferencia, TransactionType.COMPRA, 0.02, 345000.50);
-            dao.inserir(transacaoTeste);
-
-            System.out.println("\n-- Listagem após inserção --");
-            dao.exibirTodas();
-
-            System.out.println("\n-- Busca pelo ID 300 --");
-            Transaction encontrada = dao.buscarPorId(300L);
-            if (encontrada != null) {
-                System.out.println("Encontrada: tipo " + encontrada.getTipo() + " | valor total: " + encontrada.getValorTotal());
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] bytes = md.digest(senha.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) {
+                sb.append(String.format("%02x", b));
             }
-
-            System.out.println("\n-- Atualizando quantidade da transação --");
-            transacaoTeste.setQuantidade(0.03);
-            dao.atualizar(300L, transacaoTeste);
-
-            System.out.println("\n-- Listagem após atualização --");
-            dao.exibirTodas();
-
-            System.out.println("\n-- Excluindo a transação de teste --");
-            dao.excluir(300L);
-
-            System.out.println("\n-- Listagem após exclusão --");
-            dao.exibirTodas();
-
-        } catch (RuntimeException e) {
-            System.err.println("Erro durante o teste de integração com o banco: " + e.getMessage());
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("Algoritmo de hash indisponível.", e);
         }
     }
 
-    private static void salvarCriptomoedasNoArquivo(String caminho, ArrayList<Cryptocurrency> lista) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(caminho))) {
-            writer.write("--- RELATÓRIO DE CRIPTOMOEDAS ATIVAS ---\n");
-            for (Cryptocurrency crypto : lista) {
-                writer.write(String.format("ID: %d | Nome: %s | Ticker: %s | Preço: R$ %.2f | Volume: R$ %.2f\n",
-                        crypto.getId(), crypto.getNome(), crypto.getSimbolo(), crypto.getPrecoAtual(), crypto.getVolumeNegociacao()));
+    // ------------------------------------------------------------------
+    // CARTEIRAS
+    // ------------------------------------------------------------------
+    private static void menuCarteira() {
+        int op;
+        do {
+            op = submenu("CARTEIRAS");
+            try {
+                switch (op) {
+                    case 1 -> incluirCarteira();
+                    case 2 -> alterarCarteira();
+                    case 3 -> excluirCarteira();
+                    case 4 -> exibirTodasCarteiras();
+                    case 5 -> exibirUmaCarteira();
+                    default -> { }
+                }
+            } catch (RuntimeException e) {
+                System.out.println("Erro: " + e.getMessage());
             }
-            System.out.println("Arquivo '" + caminho + "' gravado com sucesso.");
+        } while (op != 0);
+    }
+
+    private static void incluirCarteira() {
+        Long id = lerId("ID da carteira");
+        if (portfolioDao.buscarPorId(id) != null) {
+            System.out.println("Já existe uma carteira com o ID " + id + ".");
+            return;
+        }
+        Long userId = lerId("ID do usuário dono da carteira");
+        if (userDao.buscarPorId(userId) == null) {
+            System.out.println("Usuário não encontrado. Cadastre o usuário primeiro.");
+            return;
+        }
+        for (Portfolio p : portfolioDao.listarTodas()) {
+            if (p.getUserId().equals(userId)) {
+                System.out.println("Este usuário já possui a carteira de ID " + p.getId() + ".");
+                return;
+            }
+        }
+        double saldo = lerDouble("Saldo virtual inicial (R$)", null, v -> v >= 0,
+                "O saldo não pode ser negativo.");
+
+        Portfolio p = new Portfolio(id, userId);
+        p.setSaldoVirtual(saldo);
+        portfolioDao.inserir(p);
+    }
+
+    private static void alterarCarteira() {
+        Long id = lerId("ID da carteira a alterar");
+        Portfolio p = portfolioDao.buscarPorId(id);
+        if (p == null) {
+            System.out.println("Carteira não encontrada.");
+            return;
+        }
+        System.out.println("(Pressione ENTER para manter o valor atual)");
+        double saldo = lerDouble("Saldo virtual (R$)", p.getSaldoVirtual(), v -> v >= 0,
+                "O saldo não pode ser negativo.");
+        p.setSaldoVirtual(saldo);
+        portfolioDao.atualizar(id, p);
+    }
+
+    private static void excluirCarteira() {
+        Long id = lerId("ID da carteira a excluir");
+        if (portfolioDao.buscarPorId(id) == null) {
+            System.out.println("Carteira não encontrada.");
+            return;
+        }
+        if (confirmar("Confirma a exclusão?")) {
+            portfolioDao.excluir(id);
         }
     }
 
-    private static void salvarUsuariosNoArquivo(String caminho, HashMap<Long, User> mapa) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(caminho))) {
-            writer.write("--- CADASTRO INTERNO DE USUÁRIOS ---\n");
-            for (Map.Entry<Long, User> entry : mapa.entrySet()) {
-                User u = entry.getValue();
-                writer.write(String.format("Chave(ID): %d -> Nome: %s | Email: %s | HashSenha: %s\n",
-                        entry.getKey(), u.getNome(), u.getEmail(), u.getSenhaHash()));
-            }
-            System.out.println("Arquivo '" + caminho + "' gravado com sucesso.");
+    private static void exibirTodasCarteiras() {
+        ArrayList<Portfolio> lista = new ArrayList<>(portfolioDao.listarTodas());
+        if (lista.isEmpty()) {
+            System.out.println("Nenhuma carteira cadastrada.");
+            return;
+        }
+        System.out.println("--- Carteiras (" + lista.size() + ") ---");
+        for (Portfolio p : lista) {
+            imprimirCarteira(p);
         }
     }
 
-    private static void lerArquivoTexto(String caminho) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(caminho))) {
-            String linha;
-            while ((linha = reader.readLine()) != null) {
-                System.out.println("  " + linha);
+    private static void exibirUmaCarteira() {
+        Portfolio p = portfolioDao.buscarPorId(lerId("ID da carteira"));
+        if (p == null) {
+            System.out.println("Carteira não encontrada.");
+        } else {
+            imprimirCarteira(p);
+        }
+    }
+
+    private static void imprimirCarteira(Portfolio p) {
+        System.out.printf("ID: %d | userId: %d | Saldo virtual: R$ %.2f%n",
+                p.getId(), p.getUserId(), p.getSaldoVirtual());
+    }
+
+    // ------------------------------------------------------------------
+    // HISTÓRICO DE PREÇOS
+    // ------------------------------------------------------------------
+    private static void menuHistorico() {
+        int op;
+        do {
+            op = submenu("HISTÓRICO DE PREÇOS");
+            try {
+                switch (op) {
+                    case 1 -> incluirHistorico();
+                    case 2 -> alterarHistorico();
+                    case 3 -> excluirHistorico();
+                    case 4 -> exibirTodosHistoricos();
+                    case 5 -> exibirUmHistorico();
+                    default -> { }
+                }
+            } catch (RuntimeException e) {
+                System.out.println("Erro: " + e.getMessage());
             }
+        } while (op != 0);
+    }
+
+    private static void incluirHistorico() {
+        Long id = lerId("ID do registro de histórico");
+        if (historyDao.buscarPorId(id) != null) {
+            System.out.println("Já existe um histórico com o ID " + id + ".");
+            return;
+        }
+        Long cryptoId = lerId("ID da criptomoeda");
+        if (cryptoDao.buscarPorId(cryptoId) == null) {
+            System.out.println("Criptomoeda não encontrada.");
+            return;
+        }
+        double preco = lerDouble("Preço registrado (R$)", null, v -> v > 0,
+                "O preço deve ser maior que zero.");
+        historyDao.inserir(new PriceHistory(id, cryptoId, preco));
+    }
+
+    private static void alterarHistorico() {
+        Long id = lerId("ID do histórico a alterar");
+        PriceHistory atual = historyDao.buscarPorId(id);
+        if (atual == null) {
+            System.out.println("Histórico não encontrado.");
+            return;
+        }
+        System.out.println("(Pressione ENTER para manter o valor atual)");
+        double preco = lerDouble("Preço registrado (R$)", atual.getPreco(), v -> v > 0,
+                "O preço deve ser maior que zero.");
+
+        PriceHistory novo = new PriceHistory(id, atual.getCryptoId(), preco);
+        novo.setDataHora(atual.getDataHora());
+        historyDao.atualizar(id, novo);
+    }
+
+    private static void excluirHistorico() {
+        Long id = lerId("ID do histórico a excluir");
+        if (historyDao.buscarPorId(id) == null) {
+            System.out.println("Histórico não encontrado.");
+            return;
+        }
+        if (confirmar("Confirma a exclusão?")) {
+            historyDao.excluir(id);
+        }
+    }
+
+    private static void exibirTodosHistoricos() {
+        ArrayList<PriceHistory> lista = new ArrayList<>(historyDao.listarTodos());
+        if (lista.isEmpty()) {
+            System.out.println("Nenhum histórico cadastrado.");
+            return;
+        }
+        System.out.println("--- Histórico de preços (" + lista.size() + ") ---");
+        for (PriceHistory h : lista) {
+            imprimirHistorico(h);
+        }
+    }
+
+    private static void exibirUmHistorico() {
+        PriceHistory h = historyDao.buscarPorId(lerId("ID do histórico"));
+        if (h == null) {
+            System.out.println("Histórico não encontrado.");
+        } else {
+            imprimirHistorico(h);
+        }
+    }
+
+    private static void imprimirHistorico(PriceHistory h) {
+        System.out.printf("ID: %d | cryptoId: %d | Data: %s | Preço: R$ %.2f%n",
+                h.getId(), h.getCryptoId(), h.getDataHora(), h.getPreco());
+    }
+
+    // ------------------------------------------------------------------
+    // TRANSAÇÕES
+    // ------------------------------------------------------------------
+    private static void menuTransacao() {
+        int op;
+        do {
+            op = submenu("TRANSAÇÕES");
+            try {
+                switch (op) {
+                    case 1 -> incluirTransacao();
+                    case 2 -> alterarTransacao();
+                    case 3 -> excluirTransacao();
+                    case 4 -> exibirTodasTransacoes();
+                    case 5 -> exibirUmaTransacao();
+                    default -> { }
+                }
+            } catch (RuntimeException e) {
+                System.out.println("Erro: " + e.getMessage());
+            }
+        } while (op != 0);
+    }
+
+    private static void incluirTransacao() {
+        Long id = lerId("ID da transação");
+        if (transactionDao.buscarPorId(id) != null) {
+            System.out.println("Já existe uma transação com o ID " + id + ".");
+            return;
+        }
+        Long carteiraId = lerId("ID da carteira");
+        if (portfolioDao.buscarPorId(carteiraId) == null) {
+            System.out.println("Carteira não encontrada.");
+            return;
+        }
+        Long cryptoId = lerId("ID da criptomoeda");
+        Cryptocurrency crypto = cryptoDao.buscarPorId(cryptoId);
+        if (crypto == null) {
+            System.out.println("Criptomoeda não encontrada.");
+            return;
+        }
+        TransactionType tipo = lerTipo(null);
+        double qtd = lerDouble("Quantidade", null, v -> v > 0, "A quantidade deve ser maior que zero.");
+        double precoUnit = lerDouble("Preço unitário (R$) [ENTER = preço atual]", crypto.getPrecoAtual(),
+                v -> v > 0, "O preço deve ser maior que zero.");
+
+        Transaction t = new Transaction(id, carteiraId, cryptoId, crypto, tipo, qtd, precoUnit);
+        transactionDao.inserir(t);
+    }
+
+    private static void alterarTransacao() {
+        Long id = lerId("ID da transação a alterar");
+        Transaction atual = transactionDao.buscarPorId(id);
+        if (atual == null) {
+            System.out.println("Transação não encontrada.");
+            return;
+        }
+        System.out.println("(Pressione ENTER para manter o valor atual)");
+        TransactionType tipo = lerTipo(atual.getTipo());
+        double qtd = lerDouble("Quantidade", atual.getQuantidade(), v -> v > 0,
+                "A quantidade deve ser maior que zero.");
+        double precoUnit = lerDouble("Preço unitário (R$)", atual.getPrecoUnitario(), v -> v > 0,
+                "O preço deve ser maior que zero.");
+
+        Cryptocurrency ref = new Cryptocurrency(atual.getCryptoId(), "N/D", "N/D");
+        Transaction nova = new Transaction(id, atual.getPortfolioId(), atual.getCryptoId(),
+                ref, tipo, qtd, precoUnit);
+        transactionDao.atualizar(id, nova);
+    }
+
+    private static void excluirTransacao() {
+        Long id = lerId("ID da transação a excluir");
+        if (transactionDao.buscarPorId(id) == null) {
+            System.out.println("Transação não encontrada.");
+            return;
+        }
+        if (confirmar("Confirma a exclusão?")) {
+            transactionDao.excluir(id);
+        }
+    }
+
+    private static void exibirTodasTransacoes() {
+        ArrayList<Transaction> lista = new ArrayList<>(transactionDao.listarTodas());
+        if (lista.isEmpty()) {
+            System.out.println("Nenhuma transação cadastrada.");
+            return;
+        }
+        System.out.println("--- Transações (" + lista.size() + ") ---");
+        for (Transaction t : lista) {
+            imprimirTransacao(t);
+        }
+    }
+
+    private static void exibirUmaTransacao() {
+        Transaction t = transactionDao.buscarPorId(lerId("ID da transação"));
+        if (t == null) {
+            System.out.println("Transação não encontrada.");
+        } else {
+            imprimirTransacao(t);
+        }
+    }
+
+    private static void imprimirTransacao(Transaction t) {
+        System.out.printf("ID: %d | carteiraId: %d | cryptoId: %d | %s | qtd: %.8f | preço unit.: R$ %.2f | total: R$ %.2f%n",
+                t.getId(), t.getPortfolioId(), t.getCryptoId(), t.getTipo(),
+                t.getQuantidade(), t.getPrecoUnitario(), t.getValorTotal());
+    }
+
+    private static TransactionType lerTipo(TransactionType atual) {
+        TransactionType[] valores = TransactionType.values();
+        while (true) {
+            System.out.print("Tipo " + Arrays.toString(valores)
+                    + (atual != null ? " [" + atual + "]" : "") + ": ");
+            String s = SC.nextLine().trim();
+            if (s.isEmpty() && atual != null) {
+                return atual;
+            }
+            try {
+                return TransactionType.valueOf(s.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                System.out.println("Tipo inválido. Opções: " + Arrays.toString(valores));
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Utilitários de leitura com validação
+    // ------------------------------------------------------------------
+    private static int lerOpcao(int min, int max) {
+        while (true) {
+            System.out.print("Escolha uma opção: ");
+            String s = SC.nextLine().trim();
+            try {
+                int v = Integer.parseInt(s);
+                if (v >= min && v <= max) {
+                    return v;
+                }
+            } catch (NumberFormatException ignored) {
+                // cai na mensagem abaixo
+            }
+            System.out.println("Opção inválida. Digite um número de " + min + " a " + max + ".");
+        }
+    }
+
+    private static Long lerId(String msg) {
+        while (true) {
+            System.out.print(msg + ": ");
+            String s = SC.nextLine().trim();
+            try {
+                long v = Long.parseLong(s);
+                if (v > 0) {
+                    return v;
+                }
+            } catch (NumberFormatException ignored) {
+                // cai na mensagem abaixo
+            }
+            System.out.println("ID inválido. Informe um número inteiro maior que zero.");
+        }
+    }
+
+    /**
+     * Lê um texto validado. Se {@code atual} não for nulo, ENTER mantém o valor atual.
+     */
+    private static String lerTexto(String msg, String atual, Predicate<String> valido, String erro) {
+        while (true) {
+            System.out.print(msg + (atual != null && !atual.isEmpty() ? " [" + atual + "]" : "") + ": ");
+            String s = SC.nextLine().trim();
+            if (s.isEmpty() && atual != null) {
+                return atual;
+            }
+            if (!s.isEmpty() && valido.test(s)) {
+                return s;
+            }
+            System.out.println(s.isEmpty() ? "Campo obrigatório." : erro);
+        }
+    }
+
+    /**
+     * Lê um número decimal validado (aceita vírgula ou ponto).
+     * Se {@code atual} não for nulo, ENTER mantém o valor atual.
+     */
+    private static double lerDouble(String msg, Double atual, Predicate<Double> valido, String erro) {
+        while (true) {
+            System.out.print(msg + (atual != null ? " [" + atual + "]" : "") + ": ");
+            String s = SC.nextLine().trim().replace(',', '.');
+            if (s.isEmpty() && atual != null) {
+                return atual;
+            }
+            try {
+                double v = Double.parseDouble(s);
+                if (!Double.isNaN(v) && !Double.isInfinite(v) && valido.test(v)) {
+                    return v;
+                }
+                System.out.println(erro);
+            } catch (NumberFormatException e) {
+                System.out.println(s.isEmpty() ? "Campo obrigatório." : "Valor numérico inválido.");
+            }
+        }
+    }
+
+    private static boolean confirmar(String msg) {
+        while (true) {
+            System.out.print(msg + " (S/N): ");
+            String s = SC.nextLine().trim().toUpperCase();
+            if (s.equals("S")) {
+                return true;
+            }
+            if (s.equals("N")) {
+                System.out.println("Operação cancelada.");
+                return false;
+            }
+            System.out.println("Responda com S ou N.");
         }
     }
 }
